@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gráfico de Gastos por Grupo e Setor</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="custo-escritorio.css">
+</head>
+<body>
+    <h1>GRÁFICO DE GASTOS - VOG COMERCIO DE ALIMENTOS LTDA</h1>
+
+    <div class="container">
+        <p>Cole seus dados abaixo (copie e cole diretamente do Excel):</p>
+        <textarea id="dataInput" placeholder="Cole aqui os dados no formato:
+GRUPOS	Empresa Vog	 Janeiro 	 Fevereiro 	 Março 
+Infraestrutura	Telefone/Internet	 R$ 767,50 	 R$ 788,61 	 R$ 822,50 
+Operacional	Embalagens	 R$ 5.604,95 	 R$ 2.870,00 	 R$ 2.666,25 
+
+[outros dados...]
+
+	Empresa Andrey			
+Sistema	Betel	 R$ 150,00 	 R$ 190,00 	 R$ 270,00 
+
+[outros dados...]"></textarea>
+        
+        <button id="generateChart">Gerar Gráfico</button>
+    </div>
+    
+    <div class="container-chart" id="chartContainer" style="display: none;">
+        <div class="chart-controls" id="chartControls">
+            <button id="toggleScale">Alternar para Escala Logarítmica</button>
+            <button id="backButtonVog" style="display: none;">Voltar para Grupos - Vog</button>
+            <button id="backButtonAndrey" style="display: none;">Voltar para Grupos - Andrey</button>
+            <button id="exportPdf">Exportar como PDF</button>
+            <button id="printPage">Imprimir Página</button>
+            <button id="exportImage">Exportar como Imagem</button>
+        </div>
+        
+        <div class="company-container">
+            <div class="company-title">Empresa Vog</div>
+            <div class="line-chart-container">
+                <canvas id="mainChartVog"></canvas>
+            </div>
+            <div class="pie-chart-container">
+                <canvas id="pieChartVog"></canvas>
+            </div>
+        </div>
+        
+        <div class="company-container">
+            <div class="company-title">Empresa Andrey</div>
+            <div class="line-chart-container">
+                <canvas id="mainChartAndrey"></canvas>
+            </div>
+            <div class="pie-chart-container">
+                <canvas id="pieChartAndrey"></canvas>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="custo-escritorio.js"></script>
+</body>
+</html>

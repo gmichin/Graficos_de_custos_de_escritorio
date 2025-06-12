@@ -1,0 +1,216 @@
+body {
+    font-family: Arial, sans-serif;
+    margin-top: 0.5cm;
+    margin-inline: 1cm;
+}
+h1{
+    text-align: center;
+}
+textarea {
+    width: 100%;
+    height: 200px;
+    margin-bottom: 20px;
+    border-radius: 10px;
+}
+button {
+    padding: 10px 15px;
+    background-color:hsl(246, 100%, 48%); 
+    color: white;
+    border: none;
+    cursor: pointer;
+    margin-bottom: 20px;
+}
+button:hover {
+    background-color: hsl(247, 100%, 14%);
+}
+.small-charts-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+.small-chart {
+    border: 1px solid #ddd;
+    padding: 10px;
+    border-radius: 5px;
+}
+#backButton {
+    display: none;
+}
+
+.container {
+    padding: 40px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+.data-input {
+    width: 100%;
+    height: 200px;
+    margin-bottom: 10px;
+    padding: 10px;
+    font-family: monospace;
+    white-space: pre;
+}
+#generateChart {
+    padding: 8px 15px;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.container-chart {
+    margin-top: 0.5cm;
+    padding: 40px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+.chart-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.chart-controls button {
+    padding: 8px 16px;
+    background-color: hsl(246, 100%, 48%); ;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+.chart-controls button:hover {
+    background-color: hsl(247, 100%, 14%);
+}
+
+@media print {
+    /* Esconde tudo exceto o gráfico principal e seu container */
+    body > *:not(.container-chart) {
+        display: none !important;
+    }
+    
+    canvas {
+        max-width: 100% !important;
+        height: auto !important;
+    }
+    
+    
+    /* Esconde os controles e gráficos pequenos */
+    .chart-controls, .small-charts-container {
+        display: none !important;
+    }
+    
+    /* Ajusta o canvas do gráfico principal */
+    #mainChart {
+        width: 100% !important;
+        height: auto !important;
+        max-height: 100vh !important;
+    }
+    
+    /* Configura a página como paisagem */
+    @page {
+        size: landscape;
+        margin: 0;
+    }
+    
+}
+
+#exportPdf {
+    background-color: #26dd0e;
+}
+
+#exportPdf:hover {
+    background-color: #0c5502;
+}
+
+#printPage {
+    background-color: #ff9800;
+}
+
+#printPage:hover {
+    background-color: #412700;
+}
+.charts-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.charts-row canvas {
+    flex: 1;
+    min-width: 300px;
+    max-height: 400px;
+}
+.line-chart-container, .pie-chart-container {
+    margin-bottom: 30px;
+}
+
+.line-chart-container canvas {
+    width: 90% !important;
+    height: 550px !important;
+    margin: 0 auto;
+    display: block;
+}
+
+.pie-chart-container canvas {
+    width: 100% !important;
+    max-height: 500px !important;
+    margin: 0 auto;
+    display: block;
+}
+
+@media (max-width: 768px) {
+    .company-container{
+        position: relative;
+        margin: 20px;
+    }
+}
+
+#backButtonVog, #backButtonAndrey {
+    position: fixed;
+    bottom: 20px;
+    z-index: 1000;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    padding: 12px 20px;
+    font-weight: bold;
+}
+#backButtonAndrey{
+    right: 20px;
+}
+#backButtonVog{
+    float: left;
+    left: 20px;
+}
+
+#backButtonVog, #backButtonAndrey {
+    background-color: #4a6baf !important;
+    border-radius: 30px;
+    transition: all 0.3s ease;
+}
+
+#backButtonVog:hover, #backButtonAndrey:hover {
+    background-color: #3a5a9f !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+#chartContainer {
+    overflow: visible !important;
+    height: auto !important;
+}
+
+.company-container {
+    margin-bottom: 40px;
+}
+.company-title {
+    text-align: center;
+    font-size: 24px;
+    margin-bottom: 20px;
+    color: #333;
+}
