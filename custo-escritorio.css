@@ -154,7 +154,7 @@ button:hover {
 
 .line-chart-container canvas {
     width: 90% !important;
-    height: 550px !important;
+    height: 650px !important;
     margin: 0 auto;
     display: block;
 }
