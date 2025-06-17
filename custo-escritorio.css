@@ -329,3 +329,32 @@ button:hover {
     margin-top: 10px;
     resize: vertical;
 }
+
+.chartjs-tooltip {
+    opacity: 1 !important;
+    position: absolute;
+    background: rgba(0, 0, 0, 0.8) !important;
+    color: white;
+    border-radius: 5px;
+    padding: 10px !important;
+    pointer-events: none;
+    transition: all .1s ease;
+    max-width: 300px;
+}
+
+.chartjs-tooltip .tooltip-annotations {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed #ccc;
+}
+
+.chartjs-tooltip .tooltip-annotations-title {
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #ffcc00;
+}
+
+.chartjs-tooltip .tooltip-annotation-item {
+    margin-left: 15px;
+    list-style-type: disc;
+}

@@ -84,13 +84,12 @@ function showAnnotationModal(chart, company, point) {
     currentAnnotationChart = chart;
     currentAnnotationCompany = company;
     
-    // Limpa o textarea
     annotationText.value = '';
-    
-    // Carrega anotações existentes
     loadAnnotationsForPoint();
-    
     modal.style.display = 'block';
+    
+    // Atualiza o gráfico para mostrar o marcador imediatamente
+    updateChartWithAnnotations(chart, company);
 }
 
 // Função para carregar anotações existentes
@@ -133,14 +132,14 @@ function saveAnnotation() {
     
     annotations[currentAnnotationCompany][chartType][pointKey].push(note);
     
-    // Atualiza a lista de anotações
     loadAnnotationsForPoint();
-    
-    // Limpa o textarea
     annotationText.value = '';
-    
-    // Atualiza o gráfico para mostrar que tem anotação
     updateChartWithAnnotations(currentAnnotationChart, currentAnnotationCompany);
+    
+    // Fecha o modal após salvar
+    setTimeout(() => {
+        modal.style.display = 'none';
+    }, 500);
 }
 
 // Função para deletar anotação
@@ -162,10 +161,10 @@ function updateChartWithAnnotations(chart, company) {
     
     if (chart.config.type === 'line') {
         chart.data.datasets.forEach((dataset, datasetIndex) => {
-            dataset.pointBackgroundColor = dataset.data.map((value, index) => {
+            dataset.pointStyle = dataset.data.map((value, index) => {
                 const pointKey = `${chart.data.labels[index]}-${datasetIndex}`;
                 return companyAnnotations[pointKey] && companyAnnotations[pointKey].length > 0 ? 
-                    'red' : dataset.backgroundColor;
+                    'triangle' : 'circle';
             });
         });
     } else {
@@ -185,9 +184,9 @@ function updateChartWithAnnotations(chart, company) {
     
     chart.update();
 }
-
 // Função para formatar valores monetários
 function formatMoney(value) {
+    if (isNaN(value)) return 'R$ 0,00';
     return 'R$ ' + value.toFixed(2)
         .replace('.', ',')
         .replace(/(\d)(?=(\d{3})+\,)/g, '$1.');
@@ -607,7 +606,43 @@ function getChartOptions(dataType, company) {
                 callbacks: {
                     label: function(context) {
                         return `${context.dataset.label}: ${formatMoney(context.raw)}`;
+                    },
+                    afterBody: function(context) {
+                        // Verifica se há contexto e itens
+                        if (!context || !context.length) return '';
+                        
+                        const firstContext = context[0];
+                        const chart = firstContext.chart;
+                        const chartType = chart.config.type;
+                        const companyAnnotations = annotations[company][chartType];
+                        let pointKey;
+                        
+                        if (chartType === 'line') {
+                            pointKey = `${firstContext.label}-${firstContext.datasetIndex}`;
+                        } else {
+                            pointKey = firstContext.label;
+                        }
+                        
+                        if (companyAnnotations[pointKey] && companyAnnotations[pointKey].length > 0) {
+                            // Retorna as anotações como uma lista
+                            return ['Anotações:', ...companyAnnotations[pointKey]];
+                        }
+                        return '';
                     }
+                },
+                displayColors: true,
+                usePointStyle: true,
+                bodyFont: {
+                    size: 14
+                },
+                padding: 12,
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                titleFont: {
+                    size: 16,
+                    weight: 'bold'
+                },
+                footerFont: {
+                    size: 12
                 }
             },
             datalabels: {
