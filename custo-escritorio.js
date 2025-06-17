@@ -165,7 +165,7 @@ function updateChartWithAnnotations(chart, company) {
             dataset.pointBackgroundColor = dataset.data.map((value, index) => {
                 const pointKey = `${chart.data.labels[index]}-${datasetIndex}`;
                 return companyAnnotations[pointKey] && companyAnnotations[pointKey].length > 0 ? 
-                    'black' : dataset.backgroundColor;
+                    'red' : dataset.backgroundColor;
             });
         });
     } else {
@@ -177,7 +177,7 @@ function updateChartWithAnnotations(chart, company) {
             dataset.borderColor = dataset.data.map((value, index) => {
                 const pointKey = chart.data.labels[index];
                 return companyAnnotations[pointKey] && companyAnnotations[pointKey].length > 0 ? 
-                    'black' : 'transparent';
+                    'red' : 'transparent';
             });
             dataset.borderWidth = 3;
         });
