@@ -331,17 +331,16 @@ button:hover {
 }
 
 .chartjs-tooltip {
-    opacity: 1 !important;
     position: absolute;
     background: rgba(0, 0, 0, 0.8) !important;
     color: white;
     border-radius: 5px;
     padding: 10px !important;
-    pointer-events: none;
-    transition: all .1s ease;
     max-width: 300px;
+    opacity: 1 !important;
+    pointer-events: none !important;
+    transition: none !important;
 }
-
 .chartjs-tooltip .tooltip-annotations {
     margin-top: 8px;
     padding-top: 8px;
@@ -358,3 +357,4 @@ button:hover {
     margin-left: 15px;
     list-style-type: disc;
 }
+

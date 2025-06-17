@@ -8,7 +8,11 @@ document.getElementById('backButtonAndrey').addEventListener('click', function()
 });
 
 // Variáveis globais
-let commentMode = true;
+let fixedTooltips = {
+    Vog: { line: null, pie: null },
+    Andrey: { line: null, pie: null }
+};
+let currentMode = 'comment'; // Pode ser 'dynamic', 'comment' ou 'fixedTooltip'
 let annotations = {
     Vog: { 
         groups: { line: {}, pie: {} },
@@ -51,12 +55,24 @@ const annotationsList = document.getElementById('annotationsList');
 
 // Event listeners para o modal
 document.getElementById('toggleCommentMode').addEventListener('click', function() {
-    commentMode = !commentMode;
-    this.textContent = commentMode ? 'Desativar Modo Comentário' : 'Ativar Modo Comentário';
+    // Cicla entre os modos na ordem correta
+    if (currentMode === 'dynamic') {
+        currentMode = 'comment';
+        this.textContent = 'Modo Comentários';
+    } else if (currentMode === 'comment') {
+        currentMode = 'fixedTooltip';
+        this.textContent = 'Modo Fixar Tooltip';
+    } else {
+        currentMode = 'dynamic';
+        this.textContent = 'Modo Dinâmico';
+        
+        // Remove tooltips fixos quando volta ao modo dinâmico
+        removeFixedTooltips();
+    }
     
     // Feedback visual
     const feedback = document.createElement('div');
-    feedback.textContent = `Modo Comentário ${commentMode ? 'ativado' : 'desativado'}`;
+    feedback.textContent = `Modo ${getModeName(currentMode)} ativado`;
     feedback.style.position = 'fixed';
     feedback.style.bottom = '20px';
     feedback.style.right = '20px';
@@ -72,6 +88,16 @@ document.getElementById('toggleCommentMode').addEventListener('click', function(
     }, 2000);
 });
 
+
+function getModeName(mode) {
+    switch(mode) {
+        case 'dynamic': return 'Dinâmico';
+        case 'comment': return 'Comentários';
+        case 'fixedTooltip': return 'Fixar Tooltip';
+        default: return '';
+    }
+}
+
 closeBtn.onclick = function() {
     modal.style.display = 'none';
 }
@@ -83,6 +109,21 @@ window.onclick = function(event) {
 }
 
 saveAnnotationBtn.addEventListener('click', saveAnnotation);
+
+function removeFixedTooltips() {
+    // Remove todos os tooltips fixos
+    Object.keys(fixedTooltips).forEach(company => {
+        fixedTooltips[company].line = null;
+        fixedTooltips[company].pie = null;
+        
+        const charts = company === 'Vog' ? 
+            { line: mainChartVog, pie: pieChartVog } : 
+            { line: mainChartAndrey, pie: pieChartAndrey };
+            
+        if (charts.line) charts.line.update();
+        if (charts.pie) charts.pie.update();
+    });
+}
 
 // Função para mostrar o modal de anotação
 function showAnnotationModal(chart, company, point) {
@@ -192,7 +233,6 @@ function updateChartWithAnnotations(chart, company) {
     const chartType = chart.config.type;
 
     if (chartType === 'line') {
-        // Lógica para gráfico de linhas (mantida igual)
         chart.data.datasets.forEach((dataset, datasetIndex) => {
             dataset.pointStyle = dataset.data.map((value, index) => {
                 const pointKey = `${chart.data.labels[index]}-${datasetIndex}`;
@@ -200,19 +240,15 @@ function updateChartWithAnnotations(chart, company) {
             });
         });
     } else if (chartType === 'pie') {
-        // Lógica específica para gráfico de pizza
         chart.data.datasets.forEach(dataset => {
             dataset.borderColor = dataset.data.map((value, index) => {
                 const pointKey = chart.data.labels[index];
-                
-                // Verifica se há anotações para este item
                 const hasAnnotations = annotationsToUse.pie[pointKey]?.length > 0;
                 
-                // Para setores, verifica também se o nome corresponde a um setor
                 if (!isGroupView) {
                     const mainChart = company === 'Vog' ? mainChartVog : mainChartAndrey;
                     if (mainChart && mainChart.sectorData && !mainChart.sectorData[pointKey]) {
-                        return 'transparent'; // Não é um setor válido
+                        return 'transparent';
                     }
                 }
                 
@@ -222,8 +258,22 @@ function updateChartWithAnnotations(chart, company) {
         });
     }
     
+    // Se estiver no modo fixar tooltip, verifica se há tooltip para mostrar
+    if (currentMode === 'fixedTooltip') {
+        const fixedTooltip = fixedTooltips[company][chartType];
+        if (fixedTooltip) {
+            chart.tooltip?.setActiveElements([
+                {
+                    datasetIndex: fixedTooltip.datasetIndex || 0,
+                    index: fixedTooltip.index
+                }
+            ]);
+        }
+    }
+    
     chart.update();
 }
+
 
 // Função para formatar valores monetários
 function formatMoney(value) {
@@ -733,24 +783,38 @@ function updateChartScale() {
 function setupCommentListeners(chart, company) {
     chart.options.onClick = function(evt, elements) {
         if (elements.length > 0) {
-            if (commentMode) {
+            const element = elements[0];
+            
+            if (currentMode === 'comment') {
+                // Modo Comentários - abre modal
                 const point = {
-                    label: this.data.labels[elements[0].index],
-                    datasetIndex: elements[0].datasetIndex,
-                    value: this.data.datasets[elements[0].datasetIndex].data[elements[0].index]
+                    label: this.data.labels[element.index],
+                    datasetIndex: element.datasetIndex,
+                    value: this.data.datasets[element.datasetIndex].data[element.index]
                 };
-                // Para gráficos de pizza, ajustamos o ponto
+                
                 if (this.config.type === 'pie') {
-                    point.label = this.data.labels[elements[0].index];
-                    point.value = this.data.datasets[0].data[elements[0].index];
+                    point.label = this.data.labels[element.index];
+                    point.value = this.data.datasets[0].data[element.index];
                     delete point.datasetIndex;
                 }
+                
                 showAnnotationModal(this, company, point);
-            } else {
-                // Lógica normal de navegação
+            } 
+            else if (currentMode === 'fixedTooltip') {
+                // Modo Fixar Tooltip - fixa o tooltip
+                const chartType = this.config.type;
+                fixedTooltips[company][chartType] = {
+                    index: element.index,
+                    datasetIndex: element.datasetIndex
+                };
+                this.update();
+            }
+            else {
+                // Modo Dinâmico - navegação normal
                 if (this.config.type === 'pie' && (company === 'Vog' ? !currentGroupVog : !currentGroupAndrey)) {
-                    const clickedIndex = elements[0].index;
-                    const clickedGroup = this.data.labels[clickedIndex];
+                    // Navega para setores do grupo clicado
+                    const clickedGroup = this.data.labels[element.index];
                     if (company === 'Vog') {
                         currentGroupVog = clickedGroup;
                         showGroupSectors(currentGroupVog, 'Vog');
@@ -759,7 +823,8 @@ function setupCommentListeners(chart, company) {
                         showGroupSectors(currentGroupAndrey, 'Andrey');
                     }
                 } else if (this.config.type === 'line') {
-                    const clickedDataset = this.data.datasets[elements[0].datasetIndex];
+                    // Navega para setores se for um grupo
+                    const clickedDataset = this.data.datasets[element.datasetIndex];
                     if (clickedDataset.isGroup) {
                         if (company === 'Vog') {
                             currentGroupVog = clickedDataset.group;
@@ -773,7 +838,38 @@ function setupCommentListeners(chart, company) {
             }
         }
     };
+    
+    // Configuração para tooltips customizados (fixos)
+    chart.options.plugins.tooltip = {
+        ...chart.options.plugins.tooltip,
+        external: function(context) {
+            if (currentMode === 'fixedTooltip') {
+                const chart = context.chart;
+                const company = chart.options.plugins.title?.text?.split(' - ').pop() || '';
+                const chartType = chart.config.type;
+                const fixedTooltip = fixedTooltips[company][chartType];
+                
+                if (fixedTooltip) {
+                    const tooltipModel = chart.tooltip;
+                    
+                    if (tooltipModel) {
+                        tooltipModel.setActiveElements([
+                            {
+                                datasetIndex: fixedTooltip.datasetIndex || 0,
+                                index: fixedTooltip.index
+                            }
+                        ], { x: 0, y: 0 });
+                        
+                        tooltipModel.update();
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+    };
 }
+
 function showGroupSectors(group, company) {
     const mainChart = company === 'Vog' ? mainChartVog : mainChartAndrey;
     const pieChart = company === 'Vog' ? pieChartVog : pieChartAndrey;
