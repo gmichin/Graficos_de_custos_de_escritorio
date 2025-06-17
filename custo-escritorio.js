@@ -10,8 +10,14 @@ document.getElementById('backButtonAndrey').addEventListener('click', function()
 // Variáveis globais
 let commentMode = true;
 let annotations = {
-    Vog: { line: {}, pie: {} },
-    Andrey: { line: {}, pie: {} }
+    Vog: { 
+        groups: { line: {}, pie: {} },
+        sectors: { line: {}, pie: {} }
+    },
+    Andrey: { 
+        groups: { line: {}, pie: {} },
+        sectors: { line: {}, pie: {} }
+    }
 };
 let currentAnnotationPoint = null;
 let currentAnnotationChart = null;
@@ -84,11 +90,16 @@ function showAnnotationModal(chart, company, point) {
     currentAnnotationChart = chart;
     currentAnnotationCompany = company;
     
+    // Determina se é grupo ou setor
+    const isPieChart = chart.config.type === 'pie';
+    const isLineChartGroup = chart.config.type === 'line' && chart.data.datasets[point.datasetIndex]?.isGroup;
+    
+    currentAnnotationType = (isPieChart && !(company === 'Vog' ? currentGroupVog : currentGroupAndrey)) || isLineChartGroup 
+                          ? 'groups' : 'sectors';
+    
     annotationText.value = '';
     loadAnnotationsForPoint();
     modal.style.display = 'block';
-    
-    // Atualiza o gráfico para mostrar o marcador imediatamente
     updateChartWithAnnotations(chart, company);
 }
 
@@ -126,20 +137,39 @@ function saveAnnotation() {
         `${currentAnnotationPoint.label}-${currentAnnotationPoint.datasetIndex}` : 
         currentAnnotationPoint.label;
     
-    if (!annotations[currentAnnotationCompany][chartType][pointKey]) {
-        annotations[currentAnnotationCompany][chartType][pointKey] = [];
+    if (!annotations[currentAnnotationCompany][currentAnnotationType][chartType][pointKey]) {
+        annotations[currentAnnotationCompany][currentAnnotationType][chartType][pointKey] = [];
     }
     
-    annotations[currentAnnotationCompany][chartType][pointKey].push(note);
+    annotations[currentAnnotationCompany][currentAnnotationType][chartType][pointKey].push(note);
     
     loadAnnotationsForPoint();
     annotationText.value = '';
     updateChartWithAnnotations(currentAnnotationChart, currentAnnotationCompany);
+    modal.style.display = 'none';
+}
+
+function loadAnnotationsForPoint() {
+    annotationsList.innerHTML = '';
     
-    // Fecha o modal após salvar
-    setTimeout(() => {
-        modal.style.display = 'none';
-    }, 500);
+    const chartType = currentAnnotationChart.config.type === 'line' ? 'line' : 'pie';
+    const pointKey = currentAnnotationChart.config.type === 'line' ? 
+        `${currentAnnotationPoint.label}-${currentAnnotationPoint.datasetIndex}` : 
+        currentAnnotationPoint.label;
+    
+    const relevantAnnotations = annotations[currentAnnotationCompany][currentAnnotationType][chartType];
+    
+    if (relevantAnnotations[pointKey]) {
+        relevantAnnotations[pointKey].forEach((note, index) => {
+            const annotationItem = document.createElement('div');
+            annotationItem.className = 'annotation-item';
+            annotationItem.innerHTML = `
+                <p>${note}</p>
+                <button onclick="deleteAnnotation(${index})" class="delete-annotation">Excluir</button>
+            `;
+            annotationsList.appendChild(annotationItem);
+        });
+    }
 }
 
 // Função para deletar anotação
@@ -149,34 +179,44 @@ window.deleteAnnotation = function(index) {
         `${currentAnnotationPoint.label}-${currentAnnotationPoint.datasetIndex}` : 
         currentAnnotationPoint.label;
     
-    annotations[currentAnnotationCompany][chartType][pointKey].splice(index, 1);
+    annotations[currentAnnotationCompany][currentAnnotationType][chartType][pointKey].splice(index, 1);
     loadAnnotationsForPoint();
     updateChartWithAnnotations(currentAnnotationChart, currentAnnotationCompany);
 }
 
 // Função para atualizar o gráfico com marcadores de anotação
 function updateChartWithAnnotations(chart, company) {
-    const chartType = chart.config.type === 'line' ? 'line' : 'pie';
-    const companyAnnotations = annotations[company][chartType];
-    
-    if (chart.config.type === 'line') {
+    const isGroupView = !(company === 'Vog' ? currentGroupVog : currentGroupAndrey);
+    const annotationType = isGroupView ? 'groups' : 'sectors';
+    const annotationsToUse = annotations[company][annotationType];
+    const chartType = chart.config.type;
+
+    if (chartType === 'line') {
+        // Lógica para gráfico de linhas (mantida igual)
         chart.data.datasets.forEach((dataset, datasetIndex) => {
             dataset.pointStyle = dataset.data.map((value, index) => {
                 const pointKey = `${chart.data.labels[index]}-${datasetIndex}`;
-                return companyAnnotations[pointKey] && companyAnnotations[pointKey].length > 0 ? 
-                    'triangle' : 'circle';
+                return annotationsToUse.line[pointKey]?.length > 0 ? 'triangle' : 'circle';
             });
         });
-    } else {
+    } else if (chartType === 'pie') {
+        // Lógica específica para gráfico de pizza
         chart.data.datasets.forEach(dataset => {
-            dataset.backgroundColor = dataset.data.map((value, index) => {
-                const pointKey = chart.data.labels[index];
-                return groupColors[index % groupColors.length];
-            });
             dataset.borderColor = dataset.data.map((value, index) => {
                 const pointKey = chart.data.labels[index];
-                return companyAnnotations[pointKey] && companyAnnotations[pointKey].length > 0 ? 
-                    'red' : 'transparent';
+                
+                // Verifica se há anotações para este item
+                const hasAnnotations = annotationsToUse.pie[pointKey]?.length > 0;
+                
+                // Para setores, verifica também se o nome corresponde a um setor
+                if (!isGroupView) {
+                    const mainChart = company === 'Vog' ? mainChartVog : mainChartAndrey;
+                    if (mainChart && mainChart.sectorData && !mainChart.sectorData[pointKey]) {
+                        return 'transparent'; // Não é um setor válido
+                    }
+                }
+                
+                return hasAnnotations ? 'red' : 'transparent';
             });
             dataset.borderWidth = 3;
         });
@@ -184,6 +224,7 @@ function updateChartWithAnnotations(chart, company) {
     
     chart.update();
 }
+
 // Função para formatar valores monetários
 function formatMoney(value) {
     if (isNaN(value)) return 'R$ 0,00';
@@ -466,58 +507,7 @@ function createCompanyCharts(company, organizedData) {
                 borderWidth: 1
             }]
         },
-        options: {
-            responsive: true,
-            plugins: {
-                title: {
-                    display: true,
-                    text: `Gastos por Grupo - ${company}`,
-                    font: {
-                        size: 20
-                    }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const label = context.label || '';
-                            const value = context.raw || 0;
-                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                            const percentage = Math.round((value / total) * 100);
-                            return `${label}: ${formatMoney(value)} (${percentage}%)`;
-                        }
-                    }
-                },
-                // Adicione este plugin para mostrar os valores na pizza
-                datalabels: {
-                    formatter: (value, ctx) => {
-                        const total = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                        const percentage = Math.round((value / total) * 100);
-                        return `${percentage}%`;
-                    },
-                    color: '#000',
-                    font: {
-                        weight: 'bold',
-                        size: 14
-                    },
-                    anchor: 'center',
-                    align: 'center'
-                }
-            },
-            onClick: function(evt, elements) {
-                if (elements.length > 0 && (company === 'Vog' ? !currentGroupVog : !currentGroupAndrey)) {
-                    const clickedIndex = elements[0].index;
-                    const clickedGroup = this.data.labels[clickedIndex];
-                    if (company === 'Vog') {
-                        currentGroupVog = clickedGroup;
-                        showGroupSectors(currentGroupVog, 'Vog');
-                    } else {
-                        currentGroupAndrey = clickedGroup;
-                        showGroupSectors(currentGroupAndrey, 'Andrey');
-                    }
-                }
-            }
-        },
-        // Adicione esta linha para habilitar os plugins
+        options: getChartOptions('pie', company),
         plugins: [ChartDataLabels]
     });
     
@@ -584,11 +574,93 @@ function createCompanyCharts(company, organizedData) {
     };
     
     // Atualiza os gráficos com anotações existentes
-    updateChartWithAnnotations(lineChart, company);
-    updateChartWithAnnotations(pieChart, company);
+    setupCommentListeners(lineChart, company);
+    setupCommentListeners(pieChart, company);
 }
 
 function getChartOptions(dataType, company) {
+    const commonTooltipCallbacks = {
+        label: function(context) {
+            const label = context.label || '';
+            const value = context.raw || 0;
+            if (context.chart.config.type === 'pie') {
+                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                const percentage = Math.round((value / total) * 100);
+                return `${label}: ${formatMoney(value)} (${percentage}%)`;
+            }
+            return `${label}: ${formatMoney(value)}`;
+        },
+        afterBody: function(context) {
+            if (!context || !context.length) return '';
+
+            const firstContext = context[0];
+            const chart = firstContext.chart;
+            const company = chart.options.plugins.title.text.split(' - ').pop();
+            const isGroupView = !(company === 'Vog' ? currentGroupVog : currentGroupAndrey);
+            const annotationType = isGroupView ? 'groups' : 'sectors';
+            const annotationsToUse = annotations[company][annotationType];
+
+            let pointKey;
+            if (chart.config.type === 'line') {
+                pointKey = `${firstContext.label}-${firstContext.datasetIndex}`;
+            } else {
+                pointKey = firstContext.label;
+            }
+
+            if (annotationsToUse[chart.config.type][pointKey]?.length > 0) {
+                return ['Anotações:', ...annotationsToUse[chart.config.type][pointKey]];
+            }
+            return '';
+        }
+    };
+
+if (dataType === 'pie') {
+    return {
+        responsive: true,
+        plugins: {
+            tooltip: {
+                enabled: true, // Garante que o tooltip está ativado
+                callbacks: {
+                    label: function(context) {
+                        const label = context.label || '';
+                        const value = context.raw || 0;
+                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                        const percentage = Math.round((value / total) * 100);
+                        return `${label}: ${formatMoney(value)} (${percentage}%)`;
+                    },
+                    afterBody: function(context) {
+                        if (!context || !context.length) return '';
+
+                        const firstContext = context[0];
+                        const chart = firstContext.chart;
+                        const company = chart.options.plugins.title?.text?.split(' - ').pop() || '';
+                        const isGroupView = !(company === 'Vog' ? currentGroupVog : currentGroupAndrey);
+                        const annotationType = isGroupView ? 'groups' : 'sectors';
+                        const pointKey = firstContext.label;
+
+                        // Verifica se há anotações
+                        if (annotations[company]?.[annotationType]?.pie?.[pointKey]?.length > 0) {
+                            return ['Comentários:', ...annotations[company][annotationType].pie[pointKey]];
+                        }
+                        return '';
+                    }
+                }
+            },
+            datalabels: {
+                color: '#000000', // Cor preta para os números
+                formatter: function(value, context) {
+                    const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                    const percentage = Math.round((value / total) * 100);
+                    return `${percentage}%`;
+                },
+                font: {
+                    weight: 'bold'
+                }
+            }
+        }
+    };
+}
+    // Restante da configuração para gráficos de linha...
     return {
         responsive: true,
         maintainAspectRatio: false,
@@ -603,47 +675,14 @@ function getChartOptions(dataType, company) {
                 }
             },
             tooltip: {
-                callbacks: {
-                    label: function(context) {
-                        return `${context.dataset.label}: ${formatMoney(context.raw)}`;
-                    },
-                    afterBody: function(context) {
-                        // Verifica se há contexto e itens
-                        if (!context || !context.length) return '';
-                        
-                        const firstContext = context[0];
-                        const chart = firstContext.chart;
-                        const chartType = chart.config.type;
-                        const companyAnnotations = annotations[company][chartType];
-                        let pointKey;
-                        
-                        if (chartType === 'line') {
-                            pointKey = `${firstContext.label}-${firstContext.datasetIndex}`;
-                        } else {
-                            pointKey = firstContext.label;
-                        }
-                        
-                        if (companyAnnotations[pointKey] && companyAnnotations[pointKey].length > 0) {
-                            // Retorna as anotações como uma lista
-                            return ['Anotações:', ...companyAnnotations[pointKey]];
-                        }
-                        return '';
-                    }
-                },
+                callbacks: commonTooltipCallbacks,
                 displayColors: true,
                 usePointStyle: true,
                 bodyFont: {
                     size: 14
                 },
                 padding: 12,
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                titleFont: {
-                    size: 16,
-                    weight: 'bold'
-                },
-                footerFont: {
-                    size: 12
-                }
+                backgroundColor: 'rgba(0, 0, 0, 0.8)'
             },
             datalabels: {
                 display: false
@@ -673,29 +712,6 @@ function getChartOptions(dataType, company) {
             line: {
                 tension: 0.4
             }
-        },
-        onClick: function(evt, elements) {
-            if (elements.length > 0) {
-                const clickedDatasetIndex = elements[0].datasetIndex;
-                const clickedDataset = this.data.datasets[clickedDatasetIndex];
-                
-                if (commentMode) {
-                    const point = {
-                        label: this.data.labels[elements[0].index],
-                        datasetIndex: elements[0].datasetIndex,
-                        value: this.data.datasets[elements[0].datasetIndex].data[elements[0].index]
-                    };
-                    showAnnotationModal(this, company, point);
-                } else if (clickedDataset.isGroup) {
-                    if (company === 'Vog') {
-                        currentGroupVog = clickedDataset.group;
-                        showGroupSectors(currentGroupVog, 'Vog');
-                    } else {
-                        currentGroupAndrey = clickedDataset.group;
-                        showGroupSectors(currentGroupAndrey, 'Andrey');
-                    }
-                }
-            }
         }
     };
 }
@@ -714,91 +730,138 @@ function updateChartScale() {
     if (pieChartVog) pieChartVog.update();
     if (pieChartAndrey) pieChartAndrey.update();
 }
-
-function showGroupSectors(groupName, company) {
-    const sectorData = company === 'Vog' ? mainChartVog.sectorData : mainChartAndrey.sectorData;
-    const lineChart = company === 'Vog' ? mainChartVog : mainChartAndrey;
+function setupCommentListeners(chart, company) {
+    chart.options.onClick = function(evt, elements) {
+        if (elements.length > 0) {
+            if (commentMode) {
+                const point = {
+                    label: this.data.labels[elements[0].index],
+                    datasetIndex: elements[0].datasetIndex,
+                    value: this.data.datasets[elements[0].datasetIndex].data[elements[0].index]
+                };
+                // Para gráficos de pizza, ajustamos o ponto
+                if (this.config.type === 'pie') {
+                    point.label = this.data.labels[elements[0].index];
+                    point.value = this.data.datasets[0].data[elements[0].index];
+                    delete point.datasetIndex;
+                }
+                showAnnotationModal(this, company, point);
+            } else {
+                // Lógica normal de navegação
+                if (this.config.type === 'pie' && (company === 'Vog' ? !currentGroupVog : !currentGroupAndrey)) {
+                    const clickedIndex = elements[0].index;
+                    const clickedGroup = this.data.labels[clickedIndex];
+                    if (company === 'Vog') {
+                        currentGroupVog = clickedGroup;
+                        showGroupSectors(currentGroupVog, 'Vog');
+                    } else {
+                        currentGroupAndrey = clickedGroup;
+                        showGroupSectors(currentGroupAndrey, 'Andrey');
+                    }
+                } else if (this.config.type === 'line') {
+                    const clickedDataset = this.data.datasets[elements[0].datasetIndex];
+                    if (clickedDataset.isGroup) {
+                        if (company === 'Vog') {
+                            currentGroupVog = clickedDataset.group;
+                            showGroupSectors(currentGroupVog, 'Vog');
+                        } else {
+                            currentGroupAndrey = clickedDataset.group;
+                            showGroupSectors(currentGroupAndrey, 'Andrey');
+                        }
+                    }
+                }
+            }
+        }
+    };
+}
+function showGroupSectors(group, company) {
+    const mainChart = company === 'Vog' ? mainChartVog : mainChartAndrey;
     const pieChart = company === 'Vog' ? pieChartVog : pieChartAndrey;
+    const sectorData = mainChart.sectorData;
+    // Filtra os setores que pertencem ao grupo selecionado
+    const sectorsInGroup = Object.keys(sectorData).filter(sector => sectorData[sector].group === group);
     
-    const groupSectors = Object.entries(sectorData)
-        .filter(([sector, data]) => data.group === groupName)
-        .map(([sector, data]) => ({sector, values: data.values}));
-    
-    const newLineDatasets = groupSectors.map((sector, index) => {
+    // Atualiza o gráfico de linhas para mostrar os setores
+    mainChart.data.datasets = sectorsInGroup.map((sector, index) => {
         return {
-            label: sector.sector,
-            data: sector.values,
+            label: sector,
+            data: sectorData[sector].values,
             borderColor: sectorColors[index % sectorColors.length],
-            backgroundColor: sectorColors[index % sectorColors.length], // Cor para os pontos
+            backgroundColor: sectorColors[index % sectorColors.length],
             borderWidth: 2,
             pointRadius: 4,
             pointHoverRadius: 6,
-            group: groupName,
+            group: group,
             isGroup: false,
-            // Adiciona rótulos para os setores
             datalabels: {
-                display: true,
-                align: 'top',
-                formatter: function(value) {
-                    return formatMoney(value);
-                },
-                color: sectorColors[index % sectorColors.length],
-                font: {
-                    weight: 'bold',
-                    size: 10
-                }
+                display: false
             }
         };
     });
-    
-    lineChart.data.datasets = newLineDatasets;
-    lineChart.options = getChartOptions('Setor', company);
-    lineChart.update();
-    
-    pieChart.data.labels = groupSectors.map(s => s.sector);
-    pieChart.data.datasets[0].data = groupSectors.map(s => 
-        s.values.reduce((a, b) => a + b, 0)
+
+    // Atualiza o gráfico de pizza para mostrar a participação dos setores no grupo
+    const sectorTotals = sectorsInGroup.map(sector => 
+        sectorData[sector].values.reduce((a, b) => a + b, 0)
     );
-    pieChart.data.datasets[0].backgroundColor = groupSectors.map((s, i) => 
-        sectorColors[i % sectorColors.length]
-    );
-    pieChart.options.plugins.title.text = `Gastos do Grupo - ${groupName} (${company})`;
-    pieChart.options.plugins.datalabels.formatter = (value, ctx) => {
-        const total = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-        const percentage = Math.round((value / total) * 100);
-        return `${percentage}%`;
-    };
+    
+    pieChart.data.labels = sectorsInGroup;
+    pieChart.data.datasets = [{
+        data: sectorTotals,
+        backgroundColor: sectorsInGroup.map((sector, index) => sectorColors[index % sectorColors.length]),
+        borderWidth: 1
+    }];
+
+    // Atualiza os títulos
+    mainChart.options.plugins.title.text = `Gastos do Grupo "${group}" - ${company}`;
+    pieChart.options.plugins.title.text = `Gastos por Setor - ${group} - ${company}`;
+
+    // Mantém a configuração de tooltip com os comentários
+    mainChart.options.plugins.tooltip.callbacks = getChartOptions('Setor', company).plugins.tooltip.callbacks;
+    pieChart.options.plugins.tooltip.callbacks = getChartOptions('pie', company).plugins.tooltip.callbacks;
+
+    // Atualiza os gráficos
+    mainChart.update();
     pieChart.update();
     
-    // Mostra o botão "Voltar para Grupos" apropriado
-    if (company === 'Vog') {
-        document.getElementById('backButtonVog').style.display = 'block';
-    } else {
-        document.getElementById('backButtonAndrey').style.display = 'block';
-    }
+    // Atualiza os gráficos com as anotações
+    updateChartWithAnnotations(mainChart, company);
+    updateChartWithAnnotations(pieChart, company);
+
+    // Atualiza os botões de voltar
+    document.getElementById(`backButton${company}`).style.display = 'block';
 }
 
 function showAllGroups(company) {
-    const lineChart = company === 'Vog' ? mainChartVog : mainChartAndrey;
+    const mainChart = company === 'Vog' ? mainChartVog : mainChartAndrey;
     const pieChart = company === 'Vog' ? pieChartVog : pieChartAndrey;
-    const sectorData = company === 'Vog' ? mainChartVog.sectorData : mainChartAndrey.sectorData;
-    
-    // Reorganiza os dados do grupo
+    const sectorData = mainChart.sectorData;
+
+    // Reseta as variáveis de grupo atual
+    if (company === 'Vog') {
+        currentGroupVog = null;
+    } else {
+        currentGroupAndrey = null;
+    }
+
+    // Reorganiza os dados por grupo
     const groupData = {};
-    Object.values(sectorData).forEach(sector => {
-        if (!groupData[sector.group]) {
-            groupData[sector.group] = sector.values.map(() => 0);
+    Object.keys(sectorData).forEach(sector => {
+        const group = sectorData[sector].group;
+        if (!groupData[group]) {
+            groupData[group] = sectorData[sector].values.map(() => 0);
         }
-        sector.values.forEach((value, index) => {
-            groupData[sector.group][index] += value;
+        sectorData[sector].values.forEach((value, index) => {
+            groupData[group][index] += value;
         });
     });
-    
+
     const groupNames = Object.keys(groupData);
-    const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'].slice(0, Object.values(groupData)[0].length);
-    
+    const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+        .slice(0, groupData[groupNames[0]].length);
+
     // Atualiza o gráfico de linhas
-    const newLineDatasets = groupNames.map((group, index) => {
+    mainChart.data.labels = months;
+    mainChart.data.datasets = groupNames.map((group, index) => {
         return {
             label: group,
             data: groupData[group],
@@ -812,9 +875,7 @@ function showAllGroups(company) {
             datalabels: {
                 display: true,
                 align: 'top',
-                formatter: function(value) {
-                    return formatMoney(value);
-                },
+                formatter: formatMoney,
                 color: groupColors[index % groupColors.length],
                 font: {
                     weight: 'bold',
@@ -823,33 +884,41 @@ function showAllGroups(company) {
             }
         };
     });
-    
-    lineChart.data.datasets = newLineDatasets;
-    lineChart.data.labels = months;
-    lineChart.options = getChartOptions('Grupo', company);
-    lineChart.update();
-    
+
     // Atualiza o gráfico de pizza
-    const groupTotals = {};
-    groupNames.forEach(group => {
-        groupTotals[group] = groupData[group].reduce((a, b) => a + b, 0);
-    });
+    const groupTotals = groupNames.map(group => 
+        groupData[group].reduce((a, b) => a + b, 0)
+    );
     
     pieChart.data.labels = groupNames;
-    pieChart.data.datasets[0].data = groupNames.map(group => groupTotals[group]);
-    pieChart.data.datasets[0].backgroundColor = groupNames.map((group, index) => 
-        groupColors[index % groupColors.length]
-    );
-    pieChart.options.plugins.title.text = `Distribuição por Grupo - ${company}`;
+    pieChart.data.datasets = [{
+        data: groupTotals,
+        backgroundColor: groupNames.map((group, index) => groupColors[index % groupColors.length]),
+        borderWidth: 1
+    }];
+
+    // Restaura os títulos originais
+    mainChart.options.plugins.title.text = `Gastos por Grupo - ${company}`;
+    pieChart.options.plugins.title.text = `Gastos por Grupo - ${company}`;
+
+    // Garante que as configurações de tooltip com comentários sejam mantidas
+    mainChart.options.plugins.tooltip.callbacks = getChartOptions('Grupo', company).plugins.tooltip.callbacks;
+    pieChart.options.plugins.tooltip.callbacks = getChartOptions('pie', company).plugins.tooltip.callbacks;
+
+    // Atualiza os gráficos
+    mainChart.update();
     pieChart.update();
-    
-    if (company === 'Vog') {
-        currentGroupVog = null;
-        document.getElementById('backButtonVog').style.display = 'none';
-    } else {
-        currentGroupAndrey = null;
-        document.getElementById('backButtonAndrey').style.display = 'none';
-    }
+
+    // Aplica as anotações existentes
+    updateChartWithAnnotations(mainChart, company);
+    updateChartWithAnnotations(pieChart, company);
+
+    // Esconde o botão de voltar
+    document.getElementById(`backButton${company}`).style.display = 'none';
+
+    // Restaura os event listeners de comentários
+    setupCommentListeners(mainChart, company);
+    setupCommentListeners(pieChart, company);
 }
 
 // Adiciona funcionalidade de exportar para PDF
