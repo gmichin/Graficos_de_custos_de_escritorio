@@ -165,16 +165,21 @@ function updateChartWithAnnotations(chart, company) {
             dataset.pointBackgroundColor = dataset.data.map((value, index) => {
                 const pointKey = `${chart.data.labels[index]}-${datasetIndex}`;
                 return companyAnnotations[pointKey] && companyAnnotations[pointKey].length > 0 ? 
-                    'gold' : dataset.backgroundColor;
+                    'black' : dataset.backgroundColor;
             });
         });
     } else {
         chart.data.datasets.forEach(dataset => {
             dataset.backgroundColor = dataset.data.map((value, index) => {
                 const pointKey = chart.data.labels[index];
-                return companyAnnotations[pointKey] && companyAnnotations[pointKey].length > 0 ? 
-                    'gold' : groupColors[index % groupColors.length];
+                return groupColors[index % groupColors.length];
             });
+            dataset.borderColor = dataset.data.map((value, index) => {
+                const pointKey = chart.data.labels[index];
+                return companyAnnotations[pointKey] && companyAnnotations[pointKey].length > 0 ? 
+                    'black' : 'transparent';
+            });
+            dataset.borderWidth = 3;
         });
     }
     
