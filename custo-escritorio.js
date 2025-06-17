@@ -8,6 +8,14 @@ document.getElementById('backButtonAndrey').addEventListener('click', function()
 });
 
 // Variáveis globais
+let commentMode = true;
+let annotations = {
+    Vog: { line: {}, pie: {} },
+    Andrey: { line: {}, pie: {} }
+};
+let currentAnnotationPoint = null;
+let currentAnnotationChart = null;
+let currentAnnotationCompany = null;
 let mainChartVog = null;
 let mainChartAndrey = null;
 let pieChartVog = null;
@@ -27,6 +35,151 @@ const sectorColors = [
 ];
 
 Chart.register(ChartDataLabels);
+
+// Modal elements
+const modal = document.getElementById('annotationModal');
+const closeBtn = document.querySelector('.close');
+const annotationText = document.getElementById('annotationText');
+const saveAnnotationBtn = document.getElementById('saveAnnotation');
+const annotationsList = document.getElementById('annotationsList');
+
+// Event listeners para o modal
+document.getElementById('toggleCommentMode').addEventListener('click', function() {
+    commentMode = !commentMode;
+    this.textContent = commentMode ? 'Desativar Modo Comentário' : 'Ativar Modo Comentário';
+    
+    // Feedback visual
+    const feedback = document.createElement('div');
+    feedback.textContent = `Modo Comentário ${commentMode ? 'ativado' : 'desativado'}`;
+    feedback.style.position = 'fixed';
+    feedback.style.bottom = '20px';
+    feedback.style.right = '20px';
+    feedback.style.backgroundColor = '#333';
+    feedback.style.color = 'white';
+    feedback.style.padding = '10px';
+    feedback.style.borderRadius = '5px';
+    feedback.style.zIndex = '1000';
+    document.body.appendChild(feedback);
+    
+    setTimeout(() => {
+        document.body.removeChild(feedback);
+    }, 2000);
+});
+
+closeBtn.onclick = function() {
+    modal.style.display = 'none';
+}
+
+window.onclick = function(event) {
+    if (event.target == modal) {
+        modal.style.display = 'none';
+    }
+}
+
+saveAnnotationBtn.addEventListener('click', saveAnnotation);
+
+// Função para mostrar o modal de anotação
+function showAnnotationModal(chart, company, point) {
+    currentAnnotationPoint = point;
+    currentAnnotationChart = chart;
+    currentAnnotationCompany = company;
+    
+    // Limpa o textarea
+    annotationText.value = '';
+    
+    // Carrega anotações existentes
+    loadAnnotationsForPoint();
+    
+    modal.style.display = 'block';
+}
+
+// Função para carregar anotações existentes
+function loadAnnotationsForPoint() {
+    annotationsList.innerHTML = '';
+    
+    const chartType = currentAnnotationChart.config.type === 'line' ? 'line' : 'pie';
+    const pointKey = currentAnnotationChart.config.type === 'line' ? 
+        `${currentAnnotationPoint.label}-${currentAnnotationPoint.datasetIndex}` : 
+        currentAnnotationPoint.label;
+    
+    const companyAnnotations = annotations[currentAnnotationCompany][chartType];
+    
+    if (companyAnnotations[pointKey]) {
+        companyAnnotations[pointKey].forEach((note, index) => {
+            const annotationItem = document.createElement('div');
+            annotationItem.className = 'annotation-item';
+            annotationItem.innerHTML = `
+                <p>${note}</p>
+                <button onclick="deleteAnnotation(${index})" class="delete-annotation">Excluir</button>
+            `;
+            annotationsList.appendChild(annotationItem);
+        });
+    }
+}
+
+// Função para salvar uma nova anotação
+function saveAnnotation() {
+    const note = annotationText.value.trim();
+    if (!note) return;
+    
+    const chartType = currentAnnotationChart.config.type === 'line' ? 'line' : 'pie';
+    const pointKey = currentAnnotationChart.config.type === 'line' ? 
+        `${currentAnnotationPoint.label}-${currentAnnotationPoint.datasetIndex}` : 
+        currentAnnotationPoint.label;
+    
+    if (!annotations[currentAnnotationCompany][chartType][pointKey]) {
+        annotations[currentAnnotationCompany][chartType][pointKey] = [];
+    }
+    
+    annotations[currentAnnotationCompany][chartType][pointKey].push(note);
+    
+    // Atualiza a lista de anotações
+    loadAnnotationsForPoint();
+    
+    // Limpa o textarea
+    annotationText.value = '';
+    
+    // Atualiza o gráfico para mostrar que tem anotação
+    updateChartWithAnnotations(currentAnnotationChart, currentAnnotationCompany);
+}
+
+// Função para deletar anotação
+window.deleteAnnotation = function(index) {
+    const chartType = currentAnnotationChart.config.type === 'line' ? 'line' : 'pie';
+    const pointKey = currentAnnotationChart.config.type === 'line' ? 
+        `${currentAnnotationPoint.label}-${currentAnnotationPoint.datasetIndex}` : 
+        currentAnnotationPoint.label;
+    
+    annotations[currentAnnotationCompany][chartType][pointKey].splice(index, 1);
+    loadAnnotationsForPoint();
+    updateChartWithAnnotations(currentAnnotationChart, currentAnnotationCompany);
+}
+
+// Função para atualizar o gráfico com marcadores de anotação
+function updateChartWithAnnotations(chart, company) {
+    const chartType = chart.config.type === 'line' ? 'line' : 'pie';
+    const companyAnnotations = annotations[company][chartType];
+    
+    if (chart.config.type === 'line') {
+        chart.data.datasets.forEach((dataset, datasetIndex) => {
+            dataset.pointBackgroundColor = dataset.data.map((value, index) => {
+                const pointKey = `${chart.data.labels[index]}-${datasetIndex}`;
+                return companyAnnotations[pointKey] && companyAnnotations[pointKey].length > 0 ? 
+                    'gold' : dataset.backgroundColor;
+            });
+        });
+    } else {
+        chart.data.datasets.forEach(dataset => {
+            dataset.backgroundColor = dataset.data.map((value, index) => {
+                const pointKey = chart.data.labels[index];
+                return companyAnnotations[pointKey] && companyAnnotations[pointKey].length > 0 ? 
+                    'gold' : groupColors[index % groupColors.length];
+            });
+        });
+    }
+    
+    chart.update();
+}
 
 // Função para formatar valores monetários
 function formatMoney(value) {
@@ -376,6 +529,59 @@ function createCompanyCharts(company, organizedData) {
         mainChartAndrey.sectorData = sectorData;
         pieChartAndrey.sectorData = sectorData;
     }
+
+    lineChart.options.onClick = function(evt, elements) {
+        if (elements.length > 0) {
+            if (commentMode) {
+                const point = {
+                    label: this.data.labels[elements[0].index],
+                    datasetIndex: elements[0].datasetIndex,
+                    value: this.data.datasets[elements[0].datasetIndex].data[elements[0].index]
+                };
+                showAnnotationModal(this, company, point);
+            } else {
+                const clickedDatasetIndex = elements[0].datasetIndex;
+                const clickedDataset = this.data.datasets[clickedDatasetIndex];
+
+                if (clickedDataset.isGroup) {
+                    if (company === 'Vog') {
+                        currentGroupVog = clickedDataset.group;
+                        showGroupSectors(currentGroupVog, 'Vog');
+                    } else {
+                        currentGroupAndrey = clickedDataset.group;
+                        showGroupSectors(currentGroupAndrey, 'Andrey');
+                    }
+                }
+            }
+        }
+    };
+
+    // No createCompanyCharts, substitua o onClick do pieChart por:
+    pieChart.options.onClick = function(evt, elements) {
+        if (elements.length > 0) {
+            if (commentMode) {
+                const point = {
+                    label: this.data.labels[elements[0].index],
+                    value: this.data.datasets[0].data[elements[0].index]
+                };
+                showAnnotationModal(this, company, point);
+            } else if ((company === 'Vog' ? !currentGroupVog : !currentGroupAndrey)) {
+                const clickedIndex = elements[0].index;
+                const clickedGroup = this.data.labels[clickedIndex];
+                if (company === 'Vog') {
+                    currentGroupVog = clickedGroup;
+                    showGroupSectors(currentGroupVog, 'Vog');
+                } else {
+                    currentGroupAndrey = clickedGroup;
+                    showGroupSectors(currentGroupAndrey, 'Andrey');
+                }
+            }
+        }
+    };
+    
+    // Atualiza os gráficos com anotações existentes
+    updateChartWithAnnotations(lineChart, company);
+    updateChartWithAnnotations(pieChart, company);
 }
 
 function getChartOptions(dataType, company) {
@@ -399,9 +605,8 @@ function getChartOptions(dataType, company) {
                     }
                 }
             },
-            // Adicione este plugin para mostrar os rótulos dos dados
             datalabels: {
-                display: false // Desativamos aqui e ativamos apenas para os datasets que queremos
+                display: false
             }
         },
         scales: {
@@ -424,10 +629,9 @@ function getChartOptions(dataType, company) {
             mode: 'nearest',
             intersect: false
         },
-        // Adicione esta configuração para mostrar os rótulos dos pontos
         elements: {
             line: {
-                tension: 0.4 // Suaviza um pouco as linhas
+                tension: 0.4
             }
         },
         onClick: function(evt, elements) {
@@ -435,7 +639,14 @@ function getChartOptions(dataType, company) {
                 const clickedDatasetIndex = elements[0].datasetIndex;
                 const clickedDataset = this.data.datasets[clickedDatasetIndex];
                 
-                if (clickedDataset.isGroup) {
+                if (commentMode) {
+                    const point = {
+                        label: this.data.labels[elements[0].index],
+                        datasetIndex: elements[0].datasetIndex,
+                        value: this.data.datasets[elements[0].datasetIndex].data[elements[0].index]
+                    };
+                    showAnnotationModal(this, company, point);
+                } else if (clickedDataset.isGroup) {
                     if (company === 'Vog') {
                         currentGroupVog = clickedDataset.group;
                         showGroupSectors(currentGroupVog, 'Vog');

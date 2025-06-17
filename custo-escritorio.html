@@ -35,6 +35,7 @@ Sistema	Betel	 R$ 150,00 	 R$ 190,00 	 R$ 270,00
             <button id="exportPdf">Exportar como PDF</button>
             <button id="printPage">Imprimir Página</button>
             <button id="exportImage">Exportar como Imagem</button>
+            <button id="toggleCommentMode" class="control-button">Desativar Modo Comentário</button>
         </div>
         
         <div class="company-container">
@@ -56,6 +57,18 @@ Sistema	Betel	 R$ 150,00 	 R$ 190,00 	 R$ 270,00
                 <canvas id="pieChartAndrey"></canvas>
             </div>
         </div>
+    </div>
+    <div id="annotationModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3>Adicionar Anotação</h3>
+            <textarea id="annotationText" placeholder="Digite sua anotação aqui..."></textarea>
+            <button id="saveAnnotation">Salvar Anotação</button>
+            <div id="annotationsList"></div>
+        </div>
+    </div>
+    <div class="annotation-hint">
+        Dica: Use Ctrl+Clique em qualquer ponto para adicionar anotações
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
