@@ -120,22 +120,6 @@ button:hover {
     }
     
 }
-
-#exportPdf {
-    background-color: #26dd0e;
-}
-
-#exportPdf:hover {
-    background-color: #0c5502;
-}
-
-#printPage {
-    background-color: #ff9800;
-}
-
-#printPage:hover {
-    background-color: #412700;
-}
 .charts-row {
     display: flex;
     flex-wrap: wrap;
