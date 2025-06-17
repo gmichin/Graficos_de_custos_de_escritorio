@@ -174,13 +174,13 @@ button:hover {
 }
 
 #backButtonVog, #backButtonAndrey {
-    background-color: #4a6baf !important;
+    background-color: #2196F3 !important;
     border-radius: 30px;
     transition: all 0.3s ease;
 }
 
 #backButtonVog:hover, #backButtonAndrey:hover {
-    background-color: #3a5a9f !important;
+    background-color: #0b7dda !important;
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
@@ -342,3 +342,40 @@ button:hover {
     list-style-type: disc;
 }
 
+#toggleCommentMode {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    padding: 12px 20px;
+    font-weight: bold;
+    background-color: #2196F3 !important;
+    border-radius: 30px;
+    transition: all 0.3s ease;
+}
+
+#toggleCommentMode:hover {
+    background-color: #0b7dda !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+#toggleScale {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 1000;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    padding: 12px 20px;
+    font-weight: bold;
+    background-color: #2196F3 !important;
+    border-radius: 30px;
+    transition: all 0.3s ease;
+}
+
+#toggleScale:hover {
+    background-color: #0b7dda !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
