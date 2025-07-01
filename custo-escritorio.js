@@ -940,8 +940,18 @@ function showGroupSectors(group, company) {
             pointHoverRadius: 6,
             group: group,
             isGroup: false,
+            // Alteração aqui - habilitar datalabels para setores como nos grupos
             datalabels: {
-                display: false
+                display: true,
+                align: 'top',
+                formatter: function(value) {
+                    return formatMoney(value);
+                },
+                color: sectorColors[index % sectorColors.length],
+                font: {
+                    weight: 'bold',
+                    size: 10
+                }
             }
         };
     });
