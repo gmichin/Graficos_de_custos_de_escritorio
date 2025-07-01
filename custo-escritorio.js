@@ -312,6 +312,17 @@ function parseData(rawData) {
     const andreyData = [];
     let monthsCount = 0;
     
+    // Lista de grupos/setores a serem excluídos
+    const excludedItems = [
+        "Comissões Vendedores",
+        "Despesas Filial Soberano",
+        "Transportadora Soberano",
+        "Reffinato Produção",
+        "TOTAL",
+        "TOTAL GERAL",
+        "DESPESAS DE ESCRITÓRIO REAL"
+    ];
+    
     // Primeiro, determinamos quantos meses temos
     for (const line of lines) {
         if (line.includes('Janeiro')) {
@@ -341,6 +352,12 @@ function parseData(rawData) {
         if (parts.length >= 3 && currentCompany) { // Mínimo: Grupo, Setor e pelo menos 1 mês
             const group = parts[0].trim();
             const sector = parts[1].trim();
+            
+            // Verifica se este item deve ser excluído
+            if (excludedItems.includes(group) || excludedItems.includes(sector)) {
+                continue;
+            }
+            
             const values = [];
             
             // Processa os valores dos meses
