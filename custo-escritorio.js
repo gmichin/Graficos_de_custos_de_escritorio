@@ -1079,21 +1079,201 @@ function showAllGroups(company) {
 }
 
 // Adiciona funcionalidade de exportar para PDF
+// Adiciona funcionalidade de exportar para PDF com seleção de gráficos
 document.getElementById('exportPdf').addEventListener('click', function() {
-    if (typeof html2canvas === 'undefined' || typeof jsPDF === 'undefined') {
-        const script1 = document.createElement('script');
-        script1.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-        script1.onload = function() {
-            const script2 = document.createElement('script');
-            script2.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-            script2.onload = exportToPdf;
-            document.head.appendChild(script2);
+    // Cria um modal para seleção de gráficos
+    const selectionModal = document.createElement('div');
+    selectionModal.style.position = 'fixed';
+    selectionModal.style.top = '0';
+    selectionModal.style.left = '0';
+    selectionModal.style.width = '100%';
+    selectionModal.style.height = '100%';
+    selectionModal.style.backgroundColor = 'rgba(0,0,0,0.7)';
+    selectionModal.style.zIndex = '10000';
+    selectionModal.style.display = 'flex';
+    selectionModal.style.justifyContent = 'center';
+    selectionModal.style.alignItems = 'center';
+    
+    // Conteúdo do modal
+    selectionModal.innerHTML = `
+        <div style="background: white; padding: 20px; border-radius: 5px; max-width: 500px; width: 90%;">
+            <h2 style="margin-top: 0;">Selecione os gráficos para exportar</h2>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 8px;">
+                    <input type="checkbox" id="exportVogLine" checked> Gráfico de Linha - Vog
+                </label>
+                <label style="display: block; margin-bottom: 8px;">
+                    <input type="checkbox" id="exportVogPie" checked> Gráfico de Pizza - Vog
+                </label>
+                <label style="display: block; margin-bottom: 8px;">
+                    <input type="checkbox" id="exportAndreyLine" checked> Gráfico de Linha - Andrey
+                </label>
+                <label style="display: block; margin-bottom: 8px;">
+                    <input type="checkbox" id="exportAndreyPie" checked> Gráfico de Pizza - Andrey
+                </label>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <button id="cancelExport" style="padding: 8px 15px; background: #ccc; border: none; border-radius: 4px;">Cancelar</button>
+                <button id="confirmExport" style="padding: 8px 15px; background: #4CAF50; color: white; border: none; border-radius: 4px;">Exportar</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(selectionModal);
+    
+    // Evento para cancelar
+    document.getElementById('cancelExport').addEventListener('click', function() {
+        document.body.removeChild(selectionModal);
+    });
+    
+    // Evento para confirmar exportação
+    document.getElementById('confirmExport').addEventListener('click', function() {
+        const selectedCharts = {
+            vogLine: document.getElementById('exportVogLine').checked,
+            vogPie: document.getElementById('exportVogPie').checked,
+            andreyLine: document.getElementById('exportAndreyLine').checked,
+            andreyPie: document.getElementById('exportAndreyPie').checked
         };
-        document.head.appendChild(script1);
-    } else {
-        exportToPdf();
-    }
+        
+        document.body.removeChild(selectionModal);
+        
+        // Verifica se pelo menos um gráfico foi selecionado
+        if (!selectedCharts.vogLine && !selectedCharts.vogPie && 
+            !selectedCharts.andreyLine && !selectedCharts.andreyPie) {
+            alert('Por favor, selecione pelo menos um gráfico para exportar.');
+            return;
+        }
+        
+        // Carrega as bibliotecas necessárias se não estiverem disponíveis
+        if (typeof html2canvas === 'undefined' || typeof jsPDF === 'undefined') {
+            const script1 = document.createElement('script');
+            script1.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+            script1.onload = function() {
+                const script2 = document.createElement('script');
+                script2.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+                script2.onload = function() {
+                    exportSelectedToPdf(selectedCharts);
+                };
+                document.head.appendChild(script2);
+            };
+            document.head.appendChild(script1);
+        } else {
+            exportSelectedToPdf(selectedCharts);
+        }
+    });
 });
+
+function exportSelectedToPdf(selectedCharts) {
+    const { jsPDF } = window.jspdf;
+    const controls = document.getElementById('chartControls');
+    const originalDisplay = controls.style.display;
+    
+    // Esconde os controles
+    controls.style.display = 'none';
+    
+    // Adiciona overlay de carregamento
+    const loadingOverlay = document.createElement('div');
+    loadingOverlay.style.position = 'fixed';
+    loadingOverlay.style.top = '0';
+    loadingOverlay.style.left = '0';
+    loadingOverlay.style.width = '100%';
+    loadingOverlay.style.height = '100%';
+    loadingOverlay.style.backgroundColor = 'rgba(0,0,0,0.5)';
+    loadingOverlay.style.color = 'white';
+    loadingOverlay.style.display = 'flex';
+    loadingOverlay.style.justifyContent = 'center';
+    loadingOverlay.style.alignItems = 'center';
+    loadingOverlay.style.zIndex = '9999';
+    loadingOverlay.innerHTML = '<h2>Gerando PDF, por favor aguarde...</h2>';
+    document.body.appendChild(loadingOverlay);
+    
+    // Cria um novo PDF em orientação vertical
+    const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm'
+    });
+    
+    // Lista de gráficos a serem capturados (filtrada pela seleção)
+    const charts = [];
+    if (selectedCharts.vogLine) charts.push({ id: 'mainChartVog', title: 'Empresa Vog - Gráfico de Linha' });
+    if (selectedCharts.vogPie) charts.push({ id: 'pieChartVog', title: 'Empresa Vog - Gráfico de Pizza' });
+    if (selectedCharts.andreyLine) charts.push({ id: 'mainChartAndrey', title: 'Empresa Andrey - Gráfico de Linha' });
+    if (selectedCharts.andreyPie) charts.push({ id: 'pieChartAndrey', title: 'Empresa Andrey - Gráfico de Pizza' });
+    
+    // Função para capturar cada gráfico individualmente
+    async function captureChart(chartId, title, index) {
+        const canvas = document.getElementById(chartId);
+        
+        // Cria um novo canvas com os dados do gráfico
+        const newCanvas = document.createElement('canvas');
+        newCanvas.width = canvas.width;
+        newCanvas.height = canvas.height;
+        const ctx = newCanvas.getContext('2d');
+        
+        // Preenche o fundo com branco
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, newCanvas.width, newCanvas.height);
+        
+        // Copia o conteúdo do gráfico original
+        ctx.drawImage(canvas, 0, 0);
+        
+        // Converte para imagem
+        const imageData = newCanvas.toDataURL('image/png');
+        
+        // Adiciona nova página se necessário (a cada gráfico)
+        if (index > 0) {
+            pdf.addPage();
+        }
+        
+        // Primeira página - adiciona título principal
+        if (index === 0) {
+            pdf.setFontSize(16);
+            pdf.text('Relatório de Gastos por Grupo e Setor', 105, 15, { align: 'center' });
+        }
+        
+        // Posição Y na página
+        const yPosition = 25;
+        
+        // Adiciona título do gráfico
+        pdf.setFontSize(10);
+        pdf.text(title, 105, yPosition - 5, { align: 'center' });
+        
+        // Calcula dimensões para caber na página
+        const pageWidth = pdf.internal.pageSize.getWidth() - 20;
+        const aspectRatio = canvas.height / canvas.width;
+        const imgHeight = pageWidth * aspectRatio;
+        
+        // Adiciona a imagem ao PDF
+        pdf.addImage(imageData, 'PNG', 10, yPosition, pageWidth, imgHeight);
+    }
+    
+    // Processa todos os gráficos selecionados
+    async function processAllCharts() {
+        try {
+            for (let i = 0; i < charts.length; i++) {
+                await captureChart(charts[i].id, charts[i].title, i);
+            }
+            
+            // Finaliza o processo
+            document.body.removeChild(loadingOverlay);
+            controls.style.display = originalDisplay;
+            pdf.save('grafico_gastos_selecionados.pdf');
+            
+            // Redesenha os gráficos
+            setTimeout(redrawAllCharts, 500);
+            
+        } catch (error) {
+            console.error('Erro ao gerar PDF:', error);
+            document.body.removeChild(loadingOverlay);
+            controls.style.display = originalDisplay;
+            setTimeout(redrawAllCharts, 500);
+            alert('Erro ao gerar PDF. Verifique o console para detalhes.');
+        }
+    }
+
+    // Dá um pequeno delay para garantir que os gráficos estão renderizados
+    setTimeout(processAllCharts, 1000);
+}
 
 function redrawAllCharts() {
     if (mainChartVog) mainChartVog.update();
