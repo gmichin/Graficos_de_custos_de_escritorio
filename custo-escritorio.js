@@ -289,13 +289,13 @@ document.getElementById('generateChart').addEventListener('click', function() {
         return;
     }
     
-    const { vogData, andreyData } = parseData(rawData);
+    const { vogData, andreyData, availableMonths } = parseData(rawData);
     
     // Mostra o container principal e os controles
     document.getElementById('chartContainer').style.display = 'block';
     document.getElementById('chartControls').style.display = 'flex';
     
-    createCharts(vogData, andreyData);
+    createCharts(vogData, andreyData, availableMonths); // Agora passando availableMonths
 });
 
 document.getElementById('toggleScale').addEventListener('click', function() {
@@ -310,7 +310,6 @@ function parseData(rawData) {
     let currentCompany = null;
     const vogData = [];
     const andreyData = [];
-    let monthsCount = 0;
     
     // Lista de grupos/setores a serem excluídos
     const excludedItems = [
@@ -323,11 +322,19 @@ function parseData(rawData) {
         "DESPESAS DE ESCRITÓRIO REAL"
     ];
     
-    // Primeiro, determinamos quantos meses temos
+    // Primeiro, identificamos os meses disponíveis
+    let availableMonths = [];
     for (const line of lines) {
-        if (line.includes('Janeiro')) {
-            const parts = line.split('\t');
-            monthsCount = parts.filter(part => part.trim() !== '').length - 2;
+        if (line.includes('Janeiro') || line.includes('Fevereiro') || line.includes('Março') || 
+            line.includes('Abril') || line.includes('Maio') || line.includes('Junho') ||
+            line.includes('Julho') || line.includes('Agosto') || line.includes('Setembro') ||
+            line.includes('Outubro') || line.includes('Novembro') || line.includes('Dezembro')) {
+            
+            const parts = line.split('\t').filter(part => part.trim() !== '');
+            // Pega todos os cabeçalhos que são meses
+            availableMonths = parts.slice(2).filter(part => 
+                part.trim().match(/^(Janeiro|Fevereiro|Março|Abril|Maio|Junho|Julho|Agosto|Setembro|Outubro|Novembro|Dezembro)$/)
+            );
             break;
         }
     }
@@ -359,9 +366,17 @@ function parseData(rawData) {
             }
             
             const values = [];
+            let monthIndex = 0;
             
             // Processa os valores dos meses
-            for (let i = 2; i < Math.min(parts.length, 2 + monthsCount); i++) {
+            for (let i = 2; i < parts.length; i++) {
+                // Ignora cabeçalhos de meses que possam estar no meio dos dados
+                if (parts[i].trim().match(/^(Janeiro|Fevereiro|Março|Abril|Maio|Junho|Julho|Agosto|Setembro|Outubro|Novembro|Dezembro)$/)) {
+                    continue;
+                }
+                
+                if (monthIndex >= availableMonths.length) break;
+                
                 if (parts[i].trim() === 'R$ -' || parts[i].trim() === '-') {
                     values.push(0); // Trata valores vazios como zero
                 } else {
@@ -369,10 +384,11 @@ function parseData(rawData) {
                         .replace(/\./g, '').replace(',', '.');
                     values.push(parseFloat(num) || 0); // Se não converter, usa zero
                 }
+                monthIndex++;
             }
             
             // Completa com zeros se faltarem meses no final
-            while (values.length < monthsCount) {
+            while (values.length < availableMonths.length) {
                 values.push(0);
             }
             
@@ -390,7 +406,7 @@ function parseData(rawData) {
         }
     }
     
-    return { vogData, andreyData };
+    return { vogData, andreyData, availableMonths };
 }
 
 // Função para organizar os dados por grupo e setor
@@ -453,7 +469,7 @@ function setupChartResizeHandlers() {
 }
 
 // Função principal para criar os gráficos
-function createCharts(vogData, andreyData) {
+function createCharts(vogData, andreyData, availableMonths) {
     const vogOrganized = organizeData(vogData);
     const andreyOrganized = organizeData(andreyData);
     
@@ -492,15 +508,15 @@ function createCharts(vogData, andreyData) {
     window.addEventListener('resize', setChartDimensions);
     
     // Cria gráficos para Vog
-    createCompanyCharts('Vog', vogOrganized);
+    createCompanyCharts('Vog', vogOrganized, availableMonths);
     // Cria gráficos para Andrey
-    createCompanyCharts('Andrey', andreyOrganized);
+    createCompanyCharts('Andrey', andreyOrganized, availableMonths);
 
     setupChartResizeHandlers();
 }
 
 // Função para criar gráficos de uma empresa específica
-function createCompanyCharts(company, organizedData) {
+function createCompanyCharts(company, organizedData, months) {
     const { groupData, sectorData } = organizedData;
     const ctxLine = document.getElementById(`mainChart${company}`).getContext('2d');
     const ctxPie = document.getElementById(`pieChart${company}`).getContext('2d');
@@ -515,8 +531,7 @@ function createCompanyCharts(company, organizedData) {
     }
     
     const groupNames = Object.keys(groupData);
-    const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'].slice(0, Object.values(groupData)[0].length);
-    
+
     // Calcula totais por grupo para o gráfico de pizza
     const groupTotals = {};
     groupNames.forEach(group => {
