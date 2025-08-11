@@ -3,14 +3,14 @@ document.getElementById('backButtonVog').addEventListener('click', function() {
     showAllGroups('Vog');
 });
 
-document.getElementById('backButtonAndrey').addEventListener('click', function() {
-    showAllGroups('Andrey');
+document.getElementById('backButtonVogPrestacao').addEventListener('click', function() {
+    showAllGroups('VogPrestacao');
 });
 
 // Variáveis globais
 let fixedTooltips = {
     Vog: { line: null, pie: null },
-    Andrey: { line: null, pie: null }
+    VogPrestacao: { line: null, pie: null }
 };
 let currentMode = 'comment'; // Pode ser 'dynamic', 'comment' ou 'fixedTooltip'
 let annotations = {
@@ -18,7 +18,7 @@ let annotations = {
         groups: { line: {}, pie: {} },
         sectors: { line: {}, pie: {} }
     },
-    Andrey: { 
+    VogPrestacao: { 
         groups: { line: {}, pie: {} },
         sectors: { line: {}, pie: {} }
     }
@@ -27,11 +27,11 @@ let currentAnnotationPoint = null;
 let currentAnnotationChart = null;
 let currentAnnotationCompany = null;
 let mainChartVog = null;
-let mainChartAndrey = null;
+let mainChartVogPrestacao = null;
 let pieChartVog = null;
-let pieChartAndrey = null;
+let pieChartVogPrestacao = null;
 let currentGroupVog = null;
-let currentGroupAndrey = null;
+let currentGroupVogPrestacao = null;
 let isLogScale = false;
 const groupColors = [
     '#FF6384', '#808080', '#EEB422', '#4BC0C0', 
@@ -123,7 +123,7 @@ function removeFixedTooltips() {
         
         const charts = company === 'Vog' ? 
             { line: mainChartVog, pie: pieChartVog } : 
-            { line: mainChartAndrey, pie: pieChartAndrey };
+            { line: mainChartVogPrestacao, pie: pieChartVogPrestacao };
             
         if (charts.line) charts.line.update();
         if (charts.pie) charts.pie.update();
@@ -140,7 +140,7 @@ function showAnnotationModal(chart, company, point) {
     const isPieChart = chart.config.type === 'pie';
     const isLineChartGroup = chart.config.type === 'line' && chart.data.datasets[point.datasetIndex]?.isGroup;
     
-    currentAnnotationType = (isPieChart && !(company === 'Vog' ? currentGroupVog : currentGroupAndrey)) || isLineChartGroup 
+    currentAnnotationType = (isPieChart && !(company === 'Vog' ? currentGroupVog : currentGroupVogPrestacao)) || isLineChartGroup 
                           ? 'groups' : 'sectors';
     
     annotationText.value = '';
@@ -235,7 +235,7 @@ window.deleteAnnotation = function(index) {
 
 // Função para atualizar o gráfico com marcadores de anotação
 function updateChartWithAnnotations(chart, company) {
-    const isGroupView = !(company === 'Vog' ? currentGroupVog : currentGroupAndrey);
+    const isGroupView = !(company === 'Vog' ? currentGroupVog : currentGroupVogPrestacao);
     const annotationType = isGroupView ? 'groups' : 'sectors';
     const chartType = chart.config.type;
 
@@ -289,13 +289,13 @@ document.getElementById('generateChart').addEventListener('click', function() {
         return;
     }
     
-    const { vogData, andreyData, availableMonths } = parseData(rawData);
+    const { vogData, vogPrestacaoData, availableMonths } = parseData(rawData);
     
     // Mostra o container principal e os controles
     document.getElementById('chartContainer').style.display = 'block';
     document.getElementById('chartControls').style.display = 'flex';
     
-    createCharts(vogData, andreyData, availableMonths); // Agora passando availableMonths
+    createCharts(vogData, vogPrestacaoData, availableMonths); // Agora passando availableMonths
 });
 
 document.getElementById('toggleScale').addEventListener('click', function() {
@@ -309,7 +309,7 @@ function parseData(rawData) {
     const lines = rawData.split('\n');
     let currentCompany = null;
     const vogData = [];
-    const andreyData = [];
+    const vogPrestacaoData = [];
     
     // Lista de grupos/setores a serem excluídos
     const excludedItems = [
@@ -343,11 +343,11 @@ function parseData(rawData) {
         if (line.trim() === '') continue;
         
         // Verifica se é um cabeçalho de empresa
-        if (line.includes('Empresa Vog')) {
-            currentCompany = 'Vog';
+        if (line.includes('Empresa Vog Prestação')) {
+            currentCompany = 'VogPrestacao';
             continue;
-        } else if (line.includes('Empresa Andrey')) {
-            currentCompany = 'Andrey';
+        } else if (line.includes('Empresa Vog')) {
+            currentCompany = 'Vog';
             continue;
         } else if (line.includes('Total Geral') || line.includes('Total')) {
             continue; // Ignora linhas de total
@@ -400,13 +400,13 @@ function parseData(rawData) {
             
             if (currentCompany === 'Vog') {
                 vogData.push(dataItem);
-            } else if (currentCompany === 'Andrey') {
-                andreyData.push(dataItem);
+            } else if (currentCompany === 'VogPrestacao') {
+                vogPrestacaoData.push(dataItem);
             }
         }
     }
     
-    return { vogData, andreyData, availableMonths };
+    return { vogData, vogPrestacaoData, availableMonths };
 }
 
 // Função para organizar os dados por grupo e setor
@@ -469,9 +469,9 @@ function setupChartResizeHandlers() {
 }
 
 // Função principal para criar os gráficos
-function createCharts(vogData, andreyData, availableMonths) {
+function createCharts(vogData, vogPrestacaoData, availableMonths) {
     const vogOrganized = organizeData(vogData);
-    const andreyOrganized = organizeData(andreyData);
+    const vogPrestacaoOrganized = organizeData(vogPrestacaoData);
     
     // Configuração de DPI para melhor qualidade
     const setChartDimensions = function() {
@@ -499,9 +499,9 @@ function createCharts(vogData, andreyData, availableMonths) {
 
         // Atualiza os gráficos após redimensionamento
         if (mainChartVog) mainChartVog.resize();
-        if (mainChartAndrey) mainChartAndrey.resize();
+        if (mainChartVogPrestacao) mainChartVogPrestacao.resize();
         if (pieChartVog) pieChartVog.resize();
-        if (pieChartAndrey) pieChartAndrey.resize();
+        if (pieChartVogPrestacao) pieChartVogPrestacao.resize();
     };
     
     setChartDimensions();
@@ -509,8 +509,8 @@ function createCharts(vogData, andreyData, availableMonths) {
     
     // Cria gráficos para Vog
     createCompanyCharts('Vog', vogOrganized, availableMonths);
-    // Cria gráficos para Andrey
-    createCompanyCharts('Andrey', andreyOrganized, availableMonths);
+    // Cria gráficos para Vog Prestação
+    createCompanyCharts('VogPrestacao', vogPrestacaoOrganized, availableMonths);
 
     setupChartResizeHandlers();
 }
@@ -525,9 +525,9 @@ function createCompanyCharts(company, organizedData, months) {
     if (company === 'Vog' && mainChartVog !== null) {
         mainChartVog.destroy();
         pieChartVog.destroy();
-    } else if (company === 'Andrey' && mainChartAndrey !== null) {
-        mainChartAndrey.destroy();
-        pieChartAndrey.destroy();
+    } else if (company === 'VogPrestacao' && mainChartVogPrestacao !== null) {
+        mainChartVogPrestacao.destroy();
+        pieChartVogPrestacao.destroy();
     }
     
     const groupNames = Object.keys(groupData);
@@ -598,10 +598,10 @@ function createCompanyCharts(company, organizedData, months) {
         mainChartVog.sectorData = sectorData;
         pieChartVog.sectorData = sectorData;
     } else {
-        mainChartAndrey = lineChart;
-        pieChartAndrey = pieChart;
-        mainChartAndrey.sectorData = sectorData;
-        pieChartAndrey.sectorData = sectorData;
+        mainChartVogPrestacao = lineChart;
+        pieChartVogPrestacao = pieChart;
+        mainChartVogPrestacao.sectorData = sectorData;
+        pieChartVogPrestacao.sectorData = sectorData;
     }
 
     lineChart.options.onClick = function(evt, elements) {
@@ -622,8 +622,8 @@ function createCompanyCharts(company, organizedData, months) {
                         currentGroupVog = clickedDataset.group;
                         showGroupSectors(currentGroupVog, 'Vog');
                     } else {
-                        currentGroupAndrey = clickedDataset.group;
-                        showGroupSectors(currentGroupAndrey, 'Andrey');
+                        currentGroupVogPrestacao = clickedDataset.group;
+                        showGroupSectors(currentGroupVogPrestacao, 'VogPrestacao');
                     }
                 }
             }
@@ -646,14 +646,14 @@ function createCompanyCharts(company, organizedData, months) {
                 };
                 this.update();
             }
-            else if (!(company === 'Vog' ? currentGroupVog : currentGroupAndrey)) {
+            else if (!(company === 'Vog' ? currentGroupVog : currentGroupVogPrestacao)) {
                 const clickedGroup = this.data.labels[elements[0].index];
                 if (company === 'Vog') {
                     currentGroupVog = clickedGroup;
                     showGroupSectors(currentGroupVog, 'Vog');
                 } else {
-                    currentGroupAndrey = clickedGroup;
-                    showGroupSectors(currentGroupAndrey, 'Andrey');
+                    currentGroupVogPrestacao = clickedGroup;
+                    showGroupSectors(currentGroupVogPrestacao, 'VogPrestacao');
                 }
             }
         }
@@ -682,7 +682,7 @@ function getChartOptions(dataType, company) {
             const firstContext = context[0];
             const chart = firstContext.chart;
             const company = chart.options.plugins.title.text.split(' - ').pop();
-            const isGroupView = !(company === 'Vog' ? currentGroupVog : currentGroupAndrey);
+            const isGroupView = !(company === 'Vog' ? currentGroupVog : currentGroupVogPrestacao);
             const annotationType = isGroupView ? 'groups' : 'sectors';
             const annotationsToUse = annotations[company][annotationType];
 
@@ -726,7 +726,7 @@ function getChartOptions(dataType, company) {
                     display: true,
                     text: company === 'Vog' 
                         ? (currentGroupVog ? `Gastos por Setor - ${currentGroupVog} - Vog` : 'Gastos por Grupo - Vog')
-                        : (currentGroupAndrey ? `Gastos por Setor - ${currentGroupAndrey} - Andrey` : 'Gastos por Grupo - Andrey'),
+                        : (currentGroupVogPrestacao ? `Gastos por Setor - ${currentGroupVogPrestacao} - Vog Prestação` : 'Gastos por Grupo - Vog Prestação'),
                     font: {
                         size: 16
                     }
@@ -746,7 +746,7 @@ function getChartOptions(dataType, company) {
 
                             const firstContext = context[0];
                             const pointKey = firstContext.label;
-                            const isGroupView = !(company === 'Vog' ? currentGroupVog : currentGroupAndrey);
+                            const isGroupView = !(company === 'Vog' ? currentGroupVog : currentGroupVogPrestacao);
                             const annotationType = isGroupView ? 'groups' : 'sectors';
                             const companyAnnotations = annotations[company] || {};
                             const typeAnnotations = companyAnnotations[annotationType] || {};
@@ -785,7 +785,7 @@ function getChartOptions(dataType, company) {
                 display: true,
                 text: dataType === 'Grupo' ? 
                     `Gastos por Grupo - ${company}` : 
-                    `Gastos do Grupo "${company === 'Vog' ? currentGroupVog : currentGroupAndrey}" - ${company}`,
+                    `Gastos do Grupo "${company === 'Vog' ? currentGroupVog : currentGroupVogPrestacao}" - ${company}`,
                 font: {
                     size: 20
                 }
@@ -838,13 +838,13 @@ function updateChartScale() {
         mainChartVog.options.scales.y.beginAtZero = !isLogScale;
         mainChartVog.update();
     }
-    if (mainChartAndrey) {
-        mainChartAndrey.options.scales.y.type = isLogScale ? 'logarithmic' : 'linear';
-        mainChartAndrey.options.scales.y.beginAtZero = !isLogScale;
-        mainChartAndrey.update();
+    if (mainChartVogPrestacao) {
+        mainChartVogPrestacao.options.scales.y.type = isLogScale ? 'logarithmic' : 'linear';
+        mainChartVogPrestacao.options.scales.y.beginAtZero = !isLogScale;
+        mainChartVogPrestacao.update();
     }
     if (pieChartVog) pieChartVog.update();
-    if (pieChartAndrey) pieChartAndrey.update();
+    if (pieChartVogPrestacao) pieChartVogPrestacao.update();
 }
 function setupCommentListeners(chart, company) {
     chart.options.onClick = function(evt, elements) {
@@ -878,15 +878,15 @@ function setupCommentListeners(chart, company) {
             }
             else {
                 // Modo Dinâmico - navegação normal
-                if (this.config.type === 'pie' && (company === 'Vog' ? !currentGroupVog : !currentGroupAndrey)) {
+                if (this.config.type === 'pie' && (company === 'Vog' ? !currentGroupVog : !currentGroupVogPrestacao)) {
                     // Navega para setores do grupo clicado
                     const clickedGroup = this.data.labels[element.index];
                     if (company === 'Vog') {
                         currentGroupVog = clickedGroup;
                         showGroupSectors(currentGroupVog, 'Vog');
                     } else {
-                        currentGroupAndrey = clickedGroup;
-                        showGroupSectors(currentGroupAndrey, 'Andrey');
+                        currentGroupVogPrestacao = clickedGroup;
+                        showGroupSectors(currentGroupVogPrestacao, 'VogPrestacao');
                     }
                 } else if (this.config.type === 'line') {
                     // Navega para setores se for um grupo
@@ -896,8 +896,8 @@ function setupCommentListeners(chart, company) {
                             currentGroupVog = clickedDataset.group;
                             showGroupSectors(currentGroupVog, 'Vog');
                         } else {
-                            currentGroupAndrey = clickedDataset.group;
-                            showGroupSectors(currentGroupAndrey, 'Andrey');
+                            currentGroupVogPrestacao = clickedDataset.group;
+                            showGroupSectors(currentGroupVogPrestacao, 'VogPrestacao');
                         }
                     }
                 }
@@ -937,8 +937,8 @@ function setupCommentListeners(chart, company) {
 }
 
 function showGroupSectors(group, company) {
-    const mainChart = company === 'Vog' ? mainChartVog : mainChartAndrey;
-    const pieChart = company === 'Vog' ? pieChartVog : pieChartAndrey;
+    const mainChart = company === 'Vog' ? mainChartVog : mainChartVogPrestacao;
+    const pieChart = company === 'Vog' ? pieChartVog : pieChartVogPrestacao;
     const sectorData = mainChart.sectorData;
     // Filtra os setores que pertencem ao grupo selecionado
     const sectorsInGroup = Object.keys(sectorData).filter(sector => sectorData[sector].group === group);
@@ -1004,15 +1004,15 @@ function showGroupSectors(group, company) {
 }
 
 function showAllGroups(company) {
-    const mainChart = company === 'Vog' ? mainChartVog : mainChartAndrey;
-    const pieChart = company === 'Vog' ? pieChartVog : pieChartAndrey;
+    const mainChart = company === 'Vog' ? mainChartVog : mainChartVogPrestacao;
+    const pieChart = company === 'Vog' ? pieChartVog : pieChartVogPrestacao;
     const sectorData = mainChart.sectorData;
 
     // Reseta as variáveis de grupo atual
     if (company === 'Vog') {
         currentGroupVog = null;
     } else {
-        currentGroupAndrey = null;
+        currentGroupVogPrestacao = null;
     }
 
     // Reorganiza os dados por grupo
@@ -1121,10 +1121,10 @@ document.getElementById('exportPdf').addEventListener('click', function() {
                     <input type="checkbox" id="exportVogPie" checked> Gráfico de Pizza - Vog
                 </label>
                 <label style="display: block; margin-bottom: 8px;">
-                    <input type="checkbox" id="exportAndreyLine" checked> Gráfico de Linha - Andrey
+                    <input type="checkbox" id="exportVogPrestacaoLine" checked> Gráfico de Linha - Vog Prestação
                 </label>
                 <label style="display: block; margin-bottom: 8px;">
-                    <input type="checkbox" id="exportAndreyPie" checked> Gráfico de Pizza - Andrey
+                    <input type="checkbox" id="exportVogPrestacaoPie" checked> Gráfico de Pizza - Vog Prestaçao
                 </label>
             </div>
             <div style="display: flex; justify-content: space-between;">
@@ -1146,15 +1146,15 @@ document.getElementById('exportPdf').addEventListener('click', function() {
         const selectedCharts = {
             vogLine: document.getElementById('exportVogLine').checked,
             vogPie: document.getElementById('exportVogPie').checked,
-            andreyLine: document.getElementById('exportAndreyLine').checked,
-            andreyPie: document.getElementById('exportAndreyPie').checked
+            vogPrestacaoLine: document.getElementById('exportVogPrestacaoLine').checked,
+            vogPrestacaoPie: document.getElementById('exportVogPrestacaoPie').checked
         };
         
         document.body.removeChild(selectionModal);
         
         // Verifica se pelo menos um gráfico foi selecionado
         if (!selectedCharts.vogLine && !selectedCharts.vogPie && 
-            !selectedCharts.andreyLine && !selectedCharts.andreyPie) {
+            !selectedCharts.vogPrestacaoLine && !selectedCharts.vogPrestacaoPie) {
             alert('Por favor, selecione pelo menos um gráfico para exportar.');
             return;
         }
@@ -1212,8 +1212,8 @@ function exportSelectedToPdf(selectedCharts) {
     const charts = [];
     if (selectedCharts.vogLine) charts.push({ id: 'mainChartVog', title: 'Empresa Vog - Gráfico de Linha' });
     if (selectedCharts.vogPie) charts.push({ id: 'pieChartVog', title: 'Empresa Vog - Gráfico de Pizza' });
-    if (selectedCharts.andreyLine) charts.push({ id: 'mainChartAndrey', title: 'Empresa Andrey - Gráfico de Linha' });
-    if (selectedCharts.andreyPie) charts.push({ id: 'pieChartAndrey', title: 'Empresa Andrey - Gráfico de Pizza' });
+    if (selectedCharts.vogPrestacaoLine) charts.push({ id: 'mainChartVogPrestacao', title: 'Empresa Vog Prestação - Gráfico de Linha' });
+    if (selectedCharts.vogPrestacaoPie) charts.push({ id: 'pieChartVogPrestacao', title: 'Empresa Vog Prestação - Gráfico de Pizza' });
     
     // Função para capturar cada gráfico individualmente
     async function captureChart(chartId, title, index) {
@@ -1292,9 +1292,9 @@ function exportSelectedToPdf(selectedCharts) {
 
 function redrawAllCharts() {
     if (mainChartVog) mainChartVog.update();
-    if (mainChartAndrey) mainChartAndrey.update();
+    if (mainChartVogPrestacao) mainChartVogPrestacao.update();
     if (pieChartVog) pieChartVog.update();
-    if (pieChartAndrey) pieChartAndrey.update();
+    if (pieChartVogPrestacao) pieChartVogPrestacao.update();
 }
 
 function exportToPdf() {
@@ -1331,8 +1331,8 @@ function exportToPdf() {
     const charts = [
         { id: 'mainChartVog', title: 'Empresa Vog - Gráfico de Linha' },
         { id: 'pieChartVog', title: 'Empresa Vog - Gráfico de Pizza' },
-        { id: 'mainChartAndrey', title: 'Empresa Andrey - Gráfico de Linha' },
-        { id: 'pieChartAndrey', title: 'Empresa Andrey - Gráfico de Pizza' }
+        { id: 'mainChartVogPrestacao', title: 'Empresa Vog Prestação - Gráfico de Linha' },
+        { id: 'pieChartVogPrestacao', title: 'Empresa Vog prestação - Gráfico de Pizza' }
     ];
     
     // Função para capturar cada gráfico individualmente
@@ -1422,12 +1422,12 @@ document.getElementById('exportImage').addEventListener('click', function() {
 function exportToImage() {
     // Ocultar os botões de voltar temporariamente
     const backButtonVog = document.getElementById('backButtonVog');
-    const backButtonAndrey = document.getElementById('backButtonAndrey');
+    const backButtonVogPrestacao = document.getElementById('backButtonVogPrestacao');
     const originalDisplayVog = backButtonVog.style.display;
-    const originalDisplayAndrey = backButtonAndrey.style.display;
+    const originalDisplayVogPrestacao = backButtonVogPrestacao.style.display;
     
     backButtonVog.style.display = 'none';
-    backButtonAndrey.style.display = 'none';
+    backButtonVogPrestacao.style.display = 'none';
     
     // Adiciona overlay de carregamento
     const loadingOverlay = document.createElement('div');
@@ -1458,7 +1458,7 @@ function exportToImage() {
         // Remover overlay e restaurar botões
         document.body.removeChild(loadingOverlay);
         backButtonVog.style.display = originalDisplayVog;
-        backButtonAndrey.style.display = originalDisplayAndrey;
+        backButtonVogPrestacao.style.display = originalDisplayVogPrestacao;
         // Criar um link para download da imagem
         const link = document.createElement('a');
         link.download = 'grafico-gastos.png';
@@ -1469,7 +1469,7 @@ function exportToImage() {
         console.error('Erro ao gerar imagem:', error);
         document.body.removeChild(loadingOverlay);
         backButtonVog.style.display = originalDisplayVog;
-        backButtonAndrey.style.display = originalDisplayAndrey;
+        backButtonVogPrestacao.style.display = originalDisplayVogPrestacao;
         alert('Erro ao gerar imagem. Verifique o console para detalhes.');
         setTimeout(redrawAllCharts, 500);
     });
