@@ -157,7 +157,7 @@ button:hover {
     }
 }
 
-#backButtonVog, #backButtonAndrey {
+#backButtonVog, #backButtonVogPrestacao {
     position: fixed;
     bottom: 20px;
     z-index: 1000;
@@ -165,7 +165,7 @@ button:hover {
     padding: 12px 20px;
     font-weight: bold;
 }
-#backButtonAndrey{
+#backButtonVogPrestacao{
     right: 20px;
 }
 #backButtonVog{
@@ -173,13 +173,13 @@ button:hover {
     left: 20px;
 }
 
-#backButtonVog, #backButtonAndrey {
+#backButtonVog, #backButtonVogPrestacao {
     background-color: #2196F3 !important;
     border-radius: 30px;
     transition: all 0.3s ease;
 }
 
-#backButtonVog:hover, #backButtonAndrey:hover {
+#backButtonVog:hover, #backButtonVogPrestacao:hover {
     background-color: #0b7dda !important;
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
