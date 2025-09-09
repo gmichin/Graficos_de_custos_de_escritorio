@@ -1020,23 +1020,30 @@ function showAllGroups(company) {
     Object.keys(sectorData).forEach(sector => {
         const group = sectorData[sector].group;
         if (!groupData[group]) {
-            groupData[group] = sectorData[sector].values.map(() => 0);
+            // Usa o mesmo número de meses que os dados originais
+            groupData[group] = new Array(mainChart.data.labels.length).fill(0);
         }
         sectorData[sector].values.forEach((value, index) => {
-            groupData[group][index] += value;
+            if (index < groupData[group].length) {
+                groupData[group][index] += value;
+            }
         });
     });
 
     const groupNames = Object.keys(groupData);
-    const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
-        .slice(0, groupData[groupNames[0]].length);
 
-    // Atualiza o gráfico de linhas
-    mainChart.data.labels = months;
+    // Preserva os meses originais do gráfico
+    const originalMonths = mainChart.data.labels;
+
+    // Atualiza o gráfico de linhas mantendo os meses originais
+    mainChart.data.labels = originalMonths;
     mainChart.data.datasets = groupNames.map((group, index) => {
+        // Garante que os dados tenham o mesmo comprimento que os meses
+        const groupValues = groupData[group].slice(0, originalMonths.length);
+        
         return {
             label: group,
-            data: groupData[group],
+            data: groupValues,
             borderColor: groupColors[index % groupColors.length],
             backgroundColor: groupColors[index % groupColors.length],
             borderWidth: 3,
@@ -1092,7 +1099,6 @@ function showAllGroups(company) {
     setupCommentListeners(mainChart, company);
     setupCommentListeners(pieChart, company);
 }
-
 // Adiciona funcionalidade de exportar para PDF
 // Adiciona funcionalidade de exportar para PDF com seleção de gráficos
 document.getElementById('exportPdf').addEventListener('click', function() {
